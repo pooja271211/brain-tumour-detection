@@ -37,7 +37,7 @@ else:
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
 IMG_SIZE   = 160        # shared with app.py and predict.py
 BATCH_SIZE = 32         # larger batch → faster epoch
-EPOCHS     = 15         # more epochs; EarlyStopping will cut short if needed
+EPOCHS     = 10         # EarlyStopping usually ends training before this limit
 
 DATASET_DIR = "dataset"
 MODEL_DIR   = "models"
@@ -134,7 +134,7 @@ callbacks_phase1 = [
         save_best_only=True, verbose=1,
     ),
     tf.keras.callbacks.EarlyStopping(
-        monitor="val_loss", patience=4,
+        monitor="val_loss", patience=3,
         restore_best_weights=True, verbose=1,
     ),
     tf.keras.callbacks.ReduceLROnPlateau(
@@ -174,7 +174,7 @@ callbacks_phase2 = [
         save_best_only=True, verbose=1,
     ),
     tf.keras.callbacks.EarlyStopping(
-        monitor="val_loss", patience=5,
+        monitor="val_loss", patience=2,
         restore_best_weights=True, verbose=1,
     ),
     tf.keras.callbacks.ReduceLROnPlateau(
@@ -186,7 +186,7 @@ callbacks_phase2 = [
 history2 = model.fit(
     train_gen,
     validation_data=validation_gen,
-    epochs=10,
+    epochs=3,
     steps_per_epoch=math.ceil(train_gen.samples / BATCH_SIZE),
     validation_steps=math.ceil(validation_gen.samples / BATCH_SIZE),
     callbacks=callbacks_phase2,
