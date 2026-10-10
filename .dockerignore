@@ -1,0 +1,7 @@
+.git/
+.venv/
+__pycache__/
+*.py[cod]
+prediction_history.json
+user_feedback.json
+models/best_model.h5
