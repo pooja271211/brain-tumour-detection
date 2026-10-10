@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.py[cod]
+
+# Local prediction history and correction data may contain uploaded scan images.
+prediction_history.json
+user_feedback.json
+models/best_model.h5
