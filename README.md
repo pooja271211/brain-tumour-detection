@@ -1,15 +1,14 @@
----
-title: Brain Tumor Detection
-emoji: 🧠
-colorFrom: blue
-colorTo: purple
-sdk: docker
-app_port: 7860
----
-
 # Brain Tumor Detection
 
 Streamlit interface for an MRI image classification project.
+
+## Deploy on Streamlit Community Cloud
+
+1. Import `pooja271211/brain-tumour-detection` from GitHub.
+2. Set the app file to `app.py` and the Python version to **3.11** in the
+   deployment settings.
+3. Deploy. Dependencies are pinned in `requirements.txt`, and the trained
+   model is included at `models/best_model.keras`.
 
 ## Model and dataset
 
