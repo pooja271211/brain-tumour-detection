@@ -11,11 +11,12 @@ app_port: 7860
 
 Streamlit interface for an MRI image classification project.
 
-## Model requirement
+## Model and dataset
 
-The repository does not include a compatible trained model. The app starts
-without one, but classification stays unavailable until a trained
-`models/best_model.keras` is added.
+The repository includes a compatible trained model at
+`models/best_model.keras`. To reproduce training, install the requirements and
+run `prepare_dataset.py` followed by `train_model.py`. The preparation script
+downloads the CC0-licensed [BrainTumorMRI dataset](https://huggingface.co/datasets/Dharamanand/BrainTumorMRI).
 
 This project is for research and education only and is not a medical diagnostic
 tool.

@@ -9,7 +9,7 @@ Fixes:
   - Reproducible seeds
 """
 
-import os, json, random
+import os, json, random, math
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import layers, models, mixed_precision
@@ -26,12 +26,13 @@ random.seed(SEED)
 np.random.seed(SEED)
 tf.random.set_seed(SEED)
 
-# ── Enable mixed precision (2–3× speed-up on compatible GPUs / Apple Silicon) ──
-try:
+# ── Use mixed precision only when a compatible GPU is available ────────────────
+if tf.config.list_physical_devices("GPU"):
     mixed_precision.set_global_policy("mixed_float16")
     print("⚡ Mixed-precision (float16) enabled")
-except Exception:
-    print("ℹ️  Mixed-precision not available — using float32")
+else:
+    mixed_precision.set_global_policy("float32")
+    print("ℹ️  Training on CPU — using float32")
 
 # ── CONFIG ─────────────────────────────────────────────────────────────────────
 IMG_SIZE   = 160        # shared with app.py and predict.py
@@ -56,6 +57,12 @@ train_datagen = ImageDataGenerator(
     zoom_range=0.10,
     brightness_range=[0.85, 1.15],
     fill_mode="nearest",
+    validation_split=0.15,
+)
+
+validation_datagen = ImageDataGenerator(
+    rescale=1.0 / 255,
+    validation_split=0.15,
 )
 
 test_datagen = ImageDataGenerator(rescale=1.0 / 255)
@@ -67,6 +74,17 @@ train_gen = train_datagen.flow_from_directory(
     class_mode="categorical",
     shuffle=True,
     seed=SEED,
+    subset="training",
+)
+
+validation_gen = validation_datagen.flow_from_directory(
+    os.path.join(DATASET_DIR, "train"),
+    target_size=(IMG_SIZE, IMG_SIZE),
+    batch_size=BATCH_SIZE,
+    class_mode="categorical",
+    shuffle=False,
+    seed=SEED,
+    subset="validation",
 )
 
 test_gen = test_datagen.flow_from_directory(
@@ -81,6 +99,7 @@ CLASS_NAMES = list(train_gen.class_indices.keys())
 NUM_CLASSES = len(CLASS_NAMES)
 print(f"\n📂 Classes : {CLASS_NAMES}")
 print(f"📊 Train   : {train_gen.samples} samples")
+print(f"📊 Val     : {validation_gen.samples} samples")
 print(f"📊 Test    : {test_gen.samples} samples\n")
 
 # ── MODEL (MobileNetV2 — fast & accurate) ─────────────────────────────────────
@@ -129,10 +148,10 @@ print("🚀 Phase 1 — Training classification head …\n")
 
 history1 = model.fit(
     train_gen,
-    validation_data=test_gen,
+    validation_data=validation_gen,
     epochs=EPOCHS,
-    steps_per_epoch=train_gen.samples // BATCH_SIZE,
-    validation_steps=test_gen.samples // BATCH_SIZE,
+    steps_per_epoch=math.ceil(train_gen.samples / BATCH_SIZE),
+    validation_steps=math.ceil(validation_gen.samples / BATCH_SIZE),
     callbacks=callbacks_phase1,
 )
 
@@ -166,10 +185,10 @@ callbacks_phase2 = [
 
 history2 = model.fit(
     train_gen,
-    validation_data=test_gen,
+    validation_data=validation_gen,
     epochs=10,
-    steps_per_epoch=train_gen.samples // BATCH_SIZE,
-    validation_steps=test_gen.samples // BATCH_SIZE,
+    steps_per_epoch=math.ceil(train_gen.samples / BATCH_SIZE),
+    validation_steps=math.ceil(validation_gen.samples / BATCH_SIZE),
     callbacks=callbacks_phase2,
 )
 
@@ -217,6 +236,8 @@ train_eval_gen = eval_datagen.flow_from_directory(
     batch_size=BATCH_SIZE,
     class_mode="categorical",
     shuffle=False,
+    subset="training",
+    seed=SEED,
 )
 
 print("📊 Evaluating on testing set …")
@@ -247,6 +268,8 @@ eval_results = {
     "test_metrics":     test_metrics,
     "train_cm":         train_cm,
     "test_cm":          test_cm,
+    "validation_samples": validation_gen.samples,
+    "test_samples":     test_eval_gen.samples,
     "history_loss":     [float(v) for v in merge(history1, history2, "loss")],
     "history_val_loss": [float(v) for v in merge(history1, history2, "val_loss")],
     "history_acc":      [float(v) for v in merge(history1, history2, "accuracy")],
@@ -257,21 +280,10 @@ with open(EVAL_PATH, "w") as f:
     json.dump(eval_results, f, indent=2)
 
 # Save the final model in the Keras 3 format preferred by TensorFlow 2.16.x.
-try:
-    model.save(MODEL_PATH)
-    print(f"💾 Model saved → {MODEL_PATH}")
-except Exception as exc:
-    print(f"⚠️ Could not save {MODEL_PATH}: {exc}")
-
-if os.path.exists(LEGACY_PATH):
-    try:
-        os.remove(LEGACY_PATH)
-    except OSError:
-        pass
+model.save(MODEL_PATH)
+print(f"💾 Model saved → {MODEL_PATH}")
 
 print(f"\n✅ Evaluation results saved → {EVAL_PATH}")
 print(f"🏆 Train Accuracy : {train_metrics['Accuracy']}")
 print(f"🏆 Test  Accuracy : {test_metrics['Accuracy']}")
 print(f"🏆 Test  F1 Score : {test_metrics['F1 Score']}")
-
-
