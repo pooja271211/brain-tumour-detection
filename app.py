@@ -219,21 +219,25 @@ def load_model():
         "models/brain_tumor_model.keras",
         "models/brain_tumor_model.h5",
     ]
+    load_errors = []
     for p in candidates:
         if os.path.exists(p):
             try:
                 import tensorflow as tf
                 m = tf.keras.models.load_model(p, compile=False)
-                return m, True
+                return m, None
             except Exception as e:
-                st.warning(f"Saved model at {p} is incompatible with the installed Keras/TensorFlow version: {e}")
+                load_errors.append(f"{p}: {e}")
 
-    st.warning(
-        "No compatible trained model file was found. Classification is unavailable until you train "
-        "the model with `train_model.py` and add the resulting `models/best_model.keras` file.",
-        icon="warning",
-    )
-    return None, False
+    if load_errors:
+        error_message = "Unable to load a saved model:\n" + "\n".join(load_errors)
+    else:
+        error_message = (
+            "No compatible trained model file was found. Classification is unavailable until you "
+            "train the model with `train_model.py` and add the resulting "
+            "`models/best_model.keras` file."
+        )
+    return None, error_message
 
 
 def predict(model, img: Image.Image) -> dict:
@@ -419,17 +423,19 @@ with st.sidebar:
 
     st.markdown("---")
 
-    model, model_ok = load_model()
+    model, model_error = load_model()
+    model_ok = model is not None
 
     # Use retrained model from session_state if available
     if "model_obj" in st.session_state and st.session_state["model_obj"] is not None:
         model    = st.session_state["model_obj"]
         model_ok = True
+        model_error = None
 
     if model_ok:
         st.success("Model ready", icon="✅")
     else:
-        st.warning("Model not found. Run `train_model.py` first.", icon="⚠️")
+        st.warning(model_error, icon="⚠️")
 
     st.markdown('<div class="sec-title">Adaptive Learning</div>', unsafe_allow_html=True)
     feedback_data = load_feedback()
