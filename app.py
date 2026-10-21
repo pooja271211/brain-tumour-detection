@@ -11,11 +11,12 @@ Fixes applied:
 
 import streamlit as st
 import numpy as np
+import csv
 import json
 import os
 import time
 import base64
-from io import BytesIO
+from io import BytesIO, StringIO
 from datetime import datetime
 from PIL import Image
 import plotly.graph_objects as go
@@ -198,6 +199,38 @@ def load_history():
 def save_history(history):
     with open(HISTORY_FILE, "w") as f:
         json.dump(history, f, indent=2)
+
+def history_to_csv(history):
+    output = StringIO(newline="")
+    fieldnames = [
+        "timestamp",
+        "filename",
+        "prediction",
+        "confidence_percent",
+        "corrected_label",
+        *[f"{class_name}_probability_percent" for class_name in CLASSES],
+    ]
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    writer.writeheader()
+
+    for entry in history:
+        filename = str(entry.get("filename", ""))
+        if filename.startswith(("=", "+", "-", "@", "\t", "\r")):
+            filename = "'" + filename
+
+        row = {
+            "timestamp": entry.get("timestamp", ""),
+            "filename": filename,
+            "prediction": entry.get("prediction", ""),
+            "confidence_percent": entry.get("confidence", ""),
+            "corrected_label": entry.get("corrected_label", ""),
+        }
+        probabilities = entry.get("all_probs") or {}
+        for class_name in CLASSES:
+            row[f"{class_name}_probability_percent"] = probabilities.get(class_name, "")
+        writer.writerow(row)
+
+    return output.getvalue()
 
 def load_feedback():
     if os.path.exists(FEEDBACK_FILE):
@@ -663,6 +696,13 @@ elif page == "🕘 History":
         c3.metric("Meningioma",   counts["meningioma"])
         c4.metric("No Tumor",     counts["notumor"])
         c5.metric("Pituitary",    counts["pituitary"])
+
+        st.download_button(
+            "⬇️ Download prediction history (CSV)",
+            data=history_to_csv(history),
+            file_name=f"prediction_history_{datetime.now():%Y%m%d_%H%M%S}.csv",
+            mime="text/csv",
+        )
 
         if corrected:
             st.info(f"🔄 {corrected} prediction(s) have been manually corrected.", icon="ℹ️")

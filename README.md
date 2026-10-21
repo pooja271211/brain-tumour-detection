@@ -10,6 +10,10 @@ Streamlit interface for an MRI image classification project.
 3. Deploy. Dependencies are pinned in `requirements.txt`, and the trained
    model is included at `models/best_model.keras`.
 
+On the **History** page, use **Download prediction history (CSV)** to export
+scan timestamps, predictions, confidence scores, class probabilities, and any
+manually corrected labels.
+
 ## Model and dataset
 
 The repository includes a compatible trained model at
