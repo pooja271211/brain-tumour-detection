@@ -20,7 +20,6 @@ from datetime import datetime
 from PIL import Image
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
-from sklearn.metrics import confusion_matrix
 
 # ─── Page Config ───────────────────────────────────────────────────────────────
 st.set_page_config(
